@@ -2,4 +2,6 @@ venv/
 __pycache__/
 *.pyc
 .env
-data/processed/
+data/raw/
+data/processed/*
+!data/processed/clean_sales.csv

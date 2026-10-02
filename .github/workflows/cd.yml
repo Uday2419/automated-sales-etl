@@ -27,5 +27,6 @@ jobs:
         run: |
           pytest
 
-      - name: Deploy
-        run: echo "Deployment step will be configured next"
+      - name: Trigger Render deployment
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
