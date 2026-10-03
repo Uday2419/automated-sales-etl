@@ -31,19 +31,47 @@ def create_database_connection():
 
 def load_data(df, table_name="sales"):
     """
-    Load transformed data into PostgreSQL.
+    Load transformed data into PostgreSQL using incremental loading.
     """
+
+    # Convert date columns
+    date_columns = ["order_date", "ship_date"]
+
+    for column in date_columns:
+        df[column] = pd.to_datetime(df[column], errors="coerce")
 
     engine = create_database_connection()
 
-    df.to_sql(
-        table_name,
-        engine,
-        if_exists="replace",
-        index=False
-    )
+    temp_table = f"{table_name}_temp"
 
-    print(f"Successfully loaded {len(df)} records into '{table_name}'.")
+    with engine.begin() as connection:
+
+        # Load data into temporary staging table
+        df.to_sql(
+            temp_table,
+            connection,
+            if_exists="replace",
+            index=False
+        )
+
+        # Insert only records whose row_id does not already exist
+        connection.exec_driver_sql(f"""
+            INSERT INTO {table_name}
+            SELECT *
+            FROM {temp_table} AS temp
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM {table_name} AS main
+                WHERE main.row_id = temp.row_id
+            );
+        """)
+
+        # Remove staging table
+        connection.exec_driver_sql(
+            f"DROP TABLE IF EXISTS {temp_table};"
+        )
+
+    print(f"Successfully processed {len(df)} records.")
 
 
 if __name__ == "__main__":
