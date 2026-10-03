@@ -54,8 +54,8 @@ def load_data(df, table_name="sales"):
             index=False
         )
 
-        # Insert only records whose row_id does not already exist
-        connection.exec_driver_sql(f"""
+        # Insert only new records
+        result = connection.exec_driver_sql(f"""
             INSERT INTO {table_name}
             SELECT *
             FROM {temp_table} AS temp
@@ -66,12 +66,18 @@ def load_data(df, table_name="sales"):
             );
         """)
 
-        # Remove staging table
+        inserted_rows = result.rowcount
+        skipped_rows = len(df) - inserted_rows
+
+        # Remove temporary table
         connection.exec_driver_sql(
             f"DROP TABLE IF EXISTS {temp_table};"
         )
 
-    print(f"Successfully processed {len(df)} records.")
+    print("ETL completed successfully.")
+    print(f"Total records processed: {len(df)}")
+    print(f"New records inserted: {inserted_rows}")
+    print(f"Existing records skipped: {skipped_rows}")
 
 
 if __name__ == "__main__":
